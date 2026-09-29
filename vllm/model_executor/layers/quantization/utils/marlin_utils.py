@@ -24,6 +24,7 @@ from vllm.utils.math_utils import round_up
 from vllm.utils.platform_utils import num_compute_units
 from vllm.utils.torch_utils import direct_register_custom_op
 
+from . import marlin_scales as scale_kernels
 from .quant_utils import pack_cols, unpack_cols
 
 logger = init_logger(__name__)
@@ -524,6 +525,8 @@ def get_scale_perms():
 def marlin_permute_scales(
     s: torch.Tensor, size_k: int, size_n: int, group_size: int, is_a_8bit: bool = False
 ) -> torch.Tensor:
+    if scale_kernels.get_backend() != "torch":
+        return scale_kernels.permute_scales(s, size_k, size_n, group_size, is_a_8bit)
     scale_perm, scale_perm_single = get_scale_perms()
     if group_size < size_k and group_size != -1 and not is_a_8bit:
         s = s.reshape((-1, len(scale_perm)))[:, scale_perm]
@@ -551,6 +554,8 @@ def marlin_act_int8_process_scales(s: torch.Tensor):
 def marlin_moe_permute_scales(
     s: torch.Tensor, size_k: int, size_n: int, group_size: int, is_a_8bit: bool = False
 ):
+    if scale_kernels.get_backend() == "batched":
+        return scale_kernels.permute_scales(s, size_k, size_n, group_size, is_a_8bit)
     num_experts = s.shape[0]
     output = torch.empty(
         (num_experts, s.shape[1], s.shape[2]),

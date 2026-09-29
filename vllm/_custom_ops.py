@@ -1088,6 +1088,19 @@ def cutlass_mxfp4_moe_mm(
 
 
 # gptq_marlin
+if hasattr(torch.ops._C, "marlin_permute_scales_out"):
+
+    @register_fake("_C::marlin_permute_scales_out")
+    def _marlin_permute_scales_out_fake(s, out, single, tile_groups=32):
+        return None
+
+    @register_fake("_C::marlin_prepare_mxfp4_scales_out")
+    def _marlin_prepare_mxfp4_scales_out_fake(
+        s, out, invalid, round_half, a8, tile_groups=32
+    ):
+        return None
+
+
 def gptq_marlin_repack(
     b_q_weight: torch.Tensor,
     size_k: int,
